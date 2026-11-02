@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="ru">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Вход — Архив документов</title><link rel="icon" href="data:,"><link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"></head>
+<body class="login-page">
+<main class="login-card">
+  <h1>Архив документов</h1><p class="muted">Юридическая фирма · учебный стенд</p>
+  {% for message in get_flashed_messages() %}<p class="notice" role="status">{{ message }}</p>{% endfor %}
+  <form method="post" class="stack">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label>Логин<input name="username" required autocomplete="username" autofocus></label>
+    <label>Пароль<input type="password" name="password" required autocomplete="current-password"></label>
+    <button>Войти</button>
+  </form>
+</main>
+</body></html>

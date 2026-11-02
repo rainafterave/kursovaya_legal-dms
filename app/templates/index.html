@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ru">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Архив документов юридической фирмы</title><link rel="icon" href="data:,"><link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"></head>
+<body>
+<header><div><h1>Архив документов</h1><p>Юридическая фирма</p></div>
+  <div class="header-actions"><a class="button secondary" href="/api/docs/">API / Swagger</a><form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="secondary">Выйти</button></form></div></header>
+<main>
+  {% for message in get_flashed_messages() %}<p class="notice" role="status">{{ message }}</p>{% endfor %}
+  <div class="forms">
+    <section class="panel"><h2>Загрузить документ</h2>
+      <form method="post" action="{{ url_for('upload') }}" enctype="multipart/form-data" class="stack">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <label>Название<input name="title" required maxlength="150" placeholder="Например, договор поставки"></label>
+        <label>Дело клиента<select name="matter" required>{% for matter in matters %}<option value="{{ matter.id }}" {% if matter.id == matter_id %}selected{% endif %}>{{ matter.number }} · {{ matter.client }} · {{ matter.title }}</option>{% endfor %}</select></label>
+        <label>Файл<input type="file" name="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.rtf,.odt,.png,.jpg,.jpeg" required></label>
+        <p class="muted small">PDF, Word, Excel, текст и изображения · до 25 МБ</p><button>Загрузить</button>
+      </form>
+    </section>
+    <section class="panel"><h2>Добавить дело</h2>
+      <form method="post" action="{{ url_for('create_matter') }}" class="stack">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <label>Номер дела<input name="number" required maxlength="30" placeholder="ЮФ-003"></label>
+        <label>Клиент<input name="client" required maxlength="150" placeholder="Название организации"></label>
+        <label>Название дела<input name="title" required maxlength="150" placeholder="Например, сопровождение сделки"></label>
+        <button class="secondary">Добавить дело</button>
+      </form>
+    </section>
+  </div>
+  <section class="panel"><div class="section-title"><h2>Документы <span class="muted">({{ files|length }})</span></h2><a class="button secondary" href="{{ url_for('index', matter=matter_id, q=q) }}">Обновить список</a></div>
+    <form method="get" class="filters" role="search">
+      <select name="matter" aria-label="Фильтр по делу"><option value="">Все дела</option>{% for matter in matters %}<option value="{{ matter.id }}" {% if matter.id == matter_id %}selected{% endif %}>{{ matter.number }} · {{ matter.client }}</option>{% endfor %}</select>
+      <input name="q" value="{{ q }}" maxlength="150" placeholder="Название или имя файла" aria-label="Поиск документов"><button>Найти</button><a href="{{ url_for('index') }}">Сбросить</a>
+    </form>
+    <div class="table-wrap"><table><thead><tr><th>Документ</th><th>Дело / клиент</th><th>Размер</th><th>Проверка</th><th></th></tr></thead><tbody>
+    {% for file in files %}<tr>
+      <td><strong>{{ file.title }}</strong><span class="subline">{{ file.filename }}</span></td>
+      <td>{{ file.number }}<span class="subline">{{ file.client }}</span></td>
+      <td class="nowrap">{{ '%.1f'|format(file.size_bytes / 1024) }} КБ</td>
+      <td><span class="status {{ file.status }}" title="{{ file.message }}">{{ {'pending':'В очереди','ok':'Проверен','error':'Ошибка'}[file.status] }}</span></td>
+      <td><a href="{{ url_for('download', file_id=file.id) }}">Скачать ↓</a></td>
+    </tr>{% else %}<tr><td colspan="5" class="empty">Документы не найдены. Загрузите файл или измените фильтр.</td></tr>{% endfor %}
+    </tbody></table></div>
+    <p class="muted small">После загрузки файл проверяется в фоне. Для обновления статуса нажмите «Обновить список».</p>
+  </section>
+</main><footer>Учебный проект по дисциплине «Настройка и администрирование сервисного программного обеспечения»</footer>
+</body></html>

@@ -1,0 +1,91 @@
+name: legal-dms
+
+services:
+  nginx:
+    image: nginx:1.28-alpine
+    ports: ["127.0.0.1:${HTTP_PORT:-8080}:80"]
+    volumes: ["./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro"]
+    networks: [legal-network]
+    depends_on:
+      app: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  app:
+    build: .
+    image: legal-dms:local
+    environment: &app-env
+      DB_HOST: db
+      DB_NAME: legal_archive
+      DB_USER: legal_app
+      DB_PASSWORD: ${DB_PASSWORD:?Run start.ps1 first}
+      SECRET_KEY: ${SECRET_KEY:?Run start.ps1 first}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Run start.ps1 first}
+      REDIS_URL: redis://redis:6379/0
+    volumes: ["document-files:/data/files"]
+    networks: [legal-network]
+    depends_on:
+      db: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=4)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  worker:
+    build: .
+    image: legal-dms:local
+    command: ["python", "worker.py"]
+    environment: *app-env
+    volumes: ["document-files:/data/files:ro"]
+    networks: [legal-network]
+    depends_on:
+      app: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import pathlib,time; assert time.time()-float(pathlib.Path('/tmp/worker-heartbeat').read_text()) < 30"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: legal_archive
+      POSTGRES_USER: legal_app
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Run start.ps1 first}
+    volumes: ["postgres-data:/var/lib/postgresql/data"]
+    networks: [legal-network]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: ["redis-data:/data"]
+    networks: [legal-network]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+networks:
+  legal-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  document-files:
+  redis-data:
