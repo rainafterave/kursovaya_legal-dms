@@ -1,0 +1,12 @@
+apiVersion: 1
+
+providers:
+  - name: legal-dms
+    orgId: 1
+    folder: Курсовая
+    type: file
+    disableDeletion: false
+    allowUiUpdates: false
+    updateIntervalSeconds: 15
+    options:
+      path: /var/lib/grafana/dashboards

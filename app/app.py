@@ -10,6 +10,7 @@ import psycopg
 from psycopg.rows import dict_row
 import redis
 from flask import Flask, abort, flash, jsonify, redirect, render_template, request, send_file, session, url_for
+from metrics import record_action, record_login, register_metrics
 
 app = Flask(__name__)
 app.config.update(SECRET_KEY=os.environ['SECRET_KEY'], MAX_CONTENT_LENGTH=26 * 1024 * 1024,
@@ -30,11 +31,16 @@ def db():
 def initialize():
     FILES.mkdir(parents=True, exist_ok=True)
     with db() as conn:
+        # Два экземпляра запускаются одновременно: создаём схему и примеры по очереди.
+        conn.execute('SELECT pg_advisory_xact_lock(761204)')
         conn.execute(Path(__file__).with_name('schema.sql').read_text(encoding='utf-8'))
         if not conn.execute('SELECT 1 FROM matters LIMIT 1').fetchone():
             for number, title, client in [('ЮФ-001', 'Договоры поставки', 'ООО «Север»'),
                                            ('ЮФ-002', 'Корпоративные документы', 'АО «Вектор»')]:
                 conn.execute('INSERT INTO matters (number,title,client) VALUES (%s,%s,%s)', (number, title, client))
+
+
+register_metrics(app, broker, db)
 
 
 @app.before_request
@@ -48,7 +54,7 @@ def check_access():
         if not valid:
             return jsonify(error='Требуется авторизация admin'), 401, {'WWW-Authenticate': 'Basic realm="Legal archive"'}
         return
-    if request.endpoint in ('health', 'static'):
+    if request.endpoint in ('health', 'static', 'metrics'):
         return
     if request.endpoint != 'login' and not session.get('logged_in'):
         return redirect(url_for('login'))
@@ -66,9 +72,11 @@ def login():
     if request.method == 'POST':
         password = request.form.get('password', '').encode('utf-8')
         if request.form.get('username') == 'admin' and hmac.compare_digest(password, os.environ['ADMIN_PASSWORD'].encode('utf-8')):
+            record_login(True)
             session.clear()
             session['logged_in'] = True
             return redirect(url_for('index'))
+        record_login(False)
         flash('Неверный логин или пароль.')
         return render_template('login.html'), 401
     return render_template('login.html')
@@ -76,6 +84,7 @@ def login():
 
 @app.post('/logout')
 def logout():
+    record_action('logout')
     session.clear()
     return redirect(url_for('login'))
 
@@ -115,6 +124,7 @@ def create_matter():
     try:
         with db() as conn:
             row = conn.execute('INSERT INTO matters (number,title,client) VALUES (%s,%s,%s) RETURNING *', (number, title, client)).fetchone()
+        record_action('create_matter')
         if request.path.startswith('/api/'):
             return jsonify(row), 201
         flash('Дело добавлено.')
@@ -160,6 +170,7 @@ def upload():
         broker.lpush(QUEUE, str(file_id))
     except redis.RedisError:
         app.logger.warning('Очередь недоступна; worker повторно поставит документ %s на проверку', file_id)
+    record_action('upload', size)
     if request.path.startswith('/api/'):
         return jsonify(id=file_id, title=title, filename=filename, status='pending'), 201
     flash('Документ загружен. Обновите список через несколько секунд для результата проверки.')
@@ -179,12 +190,15 @@ def download(file_id):
         abort(503, description='Файл недоступен в хранилище.')
     if digest != file['sha256']:
         abort(503, description='Нарушена целостность файла.')
-    return send_file(FILES / file['storage_key'], download_name=file['filename'], as_attachment=True,
-                     mimetype='application/octet-stream', conditional=False)
+    response = send_file(FILES / file['storage_key'], download_name=file['filename'], as_attachment=True,
+                         mimetype='application/octet-stream', conditional=False)
+    record_action('download', file['size_bytes'])
+    return response
 
 
 @app.after_request
 def headers(response):
+    response.headers['X-App-Instance'] = os.environ.get('HOSTNAME', 'app')
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['Cache-Control'] = 'no-store'
     response.headers['X-Frame-Options'] = 'DENY'

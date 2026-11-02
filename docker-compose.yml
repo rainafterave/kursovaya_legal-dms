@@ -18,6 +18,7 @@ services:
   app:
     build: .
     image: legal-dms:local
+    scale: 2
     environment: &app-env
       DB_HOST: db
       DB_NAME: legal_archive
@@ -81,11 +82,88 @@ services:
       retries: 10
     restart: unless-stopped
 
+  docker-metrics-proxy:
+    image: haproxy:3.2-alpine
+    user: "0:0"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./monitoring/docker-api.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    networks: [metrics-api]
+    restart: unless-stopped
+
+  docker-metrics:
+    build: ./monitoring
+    image: legal-dms-metrics:local
+    environment:
+      DOCKER_API_URL: http://docker-metrics-proxy:2375
+    networks: [legal-network, metrics-api]
+    depends_on: [docker-metrics-proxy]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9100/healthz', timeout=4)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v3.15.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=7d
+      - --storage.tsdb.retention.size=256MB
+    ports: ["127.0.0.1:9090:9090"]
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks: [legal-network]
+    depends_on:
+      docker-metrics: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9090/-/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:13.3.0
+    ports: ["127.0.0.1:${GRAFANA_PORT:-3000}:3000"]
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Run start.ps1 first}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/legal-dms.json
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/datasources.yml:/etc/grafana/provisioning/datasources/prometheus.yml:ro
+      - ./monitoring/grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/legal-dms.yml:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks: [legal-network]
+    depends_on:
+      prometheus: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
 networks:
   legal-network:
     driver: bridge
+  metrics-api:
+    internal: true
 
 volumes:
   postgres-data:
   document-files:
   redis-data:
+  prometheus-data:
+  grafana-data:

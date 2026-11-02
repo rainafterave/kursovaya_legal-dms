@@ -1,0 +1,1114 @@
+{
+  "id": null,
+  "uid": "legal-dms-website",
+  "title": "Архив документов — активность сайта",
+  "tags": [
+    "Сайт",
+    "Курсовая"
+  ],
+  "description": "Метрики Flask → Redis → Prometheus → Grafana. Активность считается по сессиям, а не по людям. Счётчики общие для процессов приложения и хранятся в Redis. История графиков хранится в Prometheus 7 дней; новый сбор не восстанавливает прошлую активность.",
+  "schemaVersion": 41,
+  "version": 1,
+  "editable": false,
+  "timezone": "browser",
+  "refresh": "10s",
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Активные сессии сайта · 5 минут",
+      "type": "stat",
+      "description": "Авторизованные браузерные сессии с запросами за последние 5 минут. Выход сразу убирает сессию. Это не число людей: учётная запись одна. Фильтр источника не применяется.",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "legal_active_sessions{job=\"website\"}",
+          "legendFormat": "Сессий",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "noValue": "Нет данных",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "Просмотры страниц сайта за период",
+      "type": "stat",
+      "description": "Успешные GET страницы входа и архива. Проверки здоровья, CSS, Swagger и сбор метрик исключены. Фильтр источника не применяется. Прирост счётчика за выбранный период оценивает Prometheus.",
+      "gridPos": {
+        "x": 6,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(legal_page_views_total{job=\"website\"}[$__range])) or vector(0)",
+          "legendFormat": "Просмотров",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "noValue": "Нет данных",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Загрузки документов за период",
+      "type": "stat",
+      "description": "Только успешно сохранённые документы. Источник выбирается сверху. Прирост за период — оценка Prometheus, округлённая до целого.",
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(legal_user_actions_total{job=\"website\",source=~\"$source\",action=\"upload\"}[$__range])) or vector(0)",
+          "legendFormat": "Загрузок",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "noValue": "Нет данных",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Скачивания документов за период",
+      "type": "stat",
+      "description": "Сервер проверил целостность и подготовил ответ с файлом. Не подтверждает, что браузер полностью получил файл. Прирост за период — оценка Prometheus.",
+      "gridPos": {
+        "x": 18,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(legal_user_actions_total{job=\"website\",source=~\"$source\",action=\"download\"}[$__range])) or vector(0)",
+          "legendFormat": "Скачиваний",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "noValue": "Нет данных",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "id": 5,
+      "title": "Документов в архиве",
+      "type": "stat",
+      "description": "",
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(legal_archive_documents{job=\"website\"})",
+          "legendFormat": "Документов",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "noValue": "Нет данных",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "id": 6,
+      "title": "Дел клиентов",
+      "type": "stat",
+      "description": "",
+      "gridPos": {
+        "x": 6,
+        "y": 4,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "legal_archive_matters{job=\"website\"}",
+          "legendFormat": "Дел",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "noValue": "Нет данных",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "id": 7,
+      "title": "Размер документов",
+      "type": "stat",
+      "description": "Сумма размеров документов из БД; не занятое место всего диска Docker.",
+      "gridPos": {
+        "x": 12,
+        "y": 4,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "legal_archive_storage_bytes{job=\"website\"}",
+          "legendFormat": "Размер",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "noValue": "Нет данных",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "id": 8,
+      "title": "Документы с ошибкой проверки",
+      "type": "stat",
+      "description": "Текущее число документов со статусом error после фоновой проверки целостности.",
+      "gridPos": {
+        "x": 18,
+        "y": 4,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "legal_archive_documents{job=\"website\",status=\"error\"}",
+          "legendFormat": "Ошибок",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "noValue": "Нет данных",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "id": 9,
+      "title": "Действия пользователей, в минуту",
+      "type": "timeseries",
+      "description": "Успешные операции выбранного источника. Повторное открытие ссылки с поиском или фильтром считается новым поиском; пустой поиск не считается.",
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(legal_user_actions_total{job=\"website\",source=~\"$source\",action=\"search\"}[$__rate_interval])) * 60",
+          "legendFormat": "Поиски и фильтры",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "B",
+          "expr": "sum(rate(legal_user_actions_total{job=\"website\",source=~\"$source\",action=\"upload\"}[$__rate_interval])) * 60",
+          "legendFormat": "Загрузки",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "C",
+          "expr": "sum(rate(legal_user_actions_total{job=\"website\",source=~\"$source\",action=\"download\"}[$__rate_interval])) * 60",
+          "legendFormat": "Скачивания",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "D",
+          "expr": "sum(rate(legal_user_actions_total{job=\"website\",source=~\"$source\",action=\"create_matter\"}[$__rate_interval])) * 60",
+          "legendFormat": "Создание дел",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "E",
+          "expr": "sum(rate(legal_user_actions_total{job=\"website\",source=~\"$source\",action=\"logout\"}[$__rate_interval])) * 60",
+          "legendFormat": "Выходы",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "noValue": "Нет данных",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 10,
+      "title": "HTTP-запросы, в минуту",
+      "type": "timeseries",
+      "description": "Запросы к приложению, включая перенаправления и ошибки. Технические проверки, статика, Swagger и /metrics исключены. Запросы, отклонённые самим Nginx, сюда не входят.",
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (source) (rate(legal_http_requests_total{job=\"website\",source=~\"$source\"}[$__rate_interval])) * 60",
+          "legendFormat": "{{source}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "noValue": "Нет данных",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 11,
+      "title": "Время обработки запросов",
+      "type": "timeseries",
+      "description": "Время обработки на сервере до формирования ответа. Не включает передачу файла по сети и отрисовку в браузере. При отсутствии запросов показан 0.",
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(legal_http_request_duration_seconds_sum{job=\"website\",source=~\"$source\"}[$__rate_interval])) / clamp_min(sum(rate(legal_http_request_duration_seconds_count{job=\"website\",source=~\"$source\"}[$__rate_interval])), 1e-9)",
+          "legendFormat": "Среднее",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "B",
+          "expr": "(histogram_quantile(0.95, sum by (le) (rate(legal_http_request_duration_seconds_bucket{job=\"website\",source=~\"$source\"}[$__rate_interval]))) >= 0) or vector(0)",
+          "legendFormat": "95-й процентиль",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "noValue": "Нет данных",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 12,
+      "title": "Ошибки HTTP, в минуту",
+      "type": "timeseries",
+      "description": "В том числе неверный пароль (401), ошибка формы (400), отсутствующий документ (404), недоступный файл (503).",
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(legal_http_requests_total{job=\"website\",source=~\"$source\",status=~\"4..\"}[$__rate_interval])) * 60 or vector(0)",
+          "legendFormat": "4xx · ошибка запроса",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "B",
+          "expr": "sum(rate(legal_http_requests_total{job=\"website\",source=~\"$source\",status=~\"5..\"}[$__rate_interval])) * 60 or vector(0)",
+          "legendFormat": "5xx · ошибка сервера",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "noValue": "Нет данных",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 13,
+      "title": "Входы на сайт, в минуту",
+      "type": "timeseries",
+      "description": "Попытки входа через форму сайта с действительным CSRF-токеном. Basic Auth API учитывается в HTTP-метриках, а не как новый вход. Фильтр источника не применяется.",
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(legal_logins_total{job=\"website\",result=\"success\"}[$__rate_interval])) * 60",
+          "legendFormat": "Успешные",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "B",
+          "expr": "sum(rate(legal_logins_total{job=\"website\",result=\"failure\"}[$__rate_interval])) * 60",
+          "legendFormat": "Неверный логин или пароль",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "noValue": "Нет данных",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 14,
+      "title": "Просмотры страниц сайта, в минуту",
+      "type": "timeseries",
+      "description": "Считаются ответы 200 на GET. Это просмотры, а не уникальные посетители. Фильтр источника не применяется.",
+      "gridPos": {
+        "x": 12,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(legal_page_views_total{job=\"website\",page=\"login\"}[$__rate_interval])) * 60",
+          "legendFormat": "Страница входа",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "B",
+          "expr": "sum(rate(legal_page_views_total{job=\"website\",page=\"archive\"}[$__rate_interval])) * 60",
+          "legendFormat": "Архив документов",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "noValue": "Нет данных",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 15,
+      "title": "Объём файлов, в минуту",
+      "type": "timeseries",
+      "description": "Сумма размеров успешно загруженных и подготовленных к скачиванию файлов за минуту. Не сетевой трафик и не подтверждение доставки.",
+      "gridPos": {
+        "x": 0,
+        "y": 32,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(legal_file_transferred_bytes_total{job=\"website\",source=~\"$source\",direction=\"upload\"}[$__rate_interval])) * 60",
+          "legendFormat": "Сохранено",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "B",
+          "expr": "sum(rate(legal_file_transferred_bytes_total{job=\"website\",source=~\"$source\",direction=\"download\"}[$__rate_interval])) * 60",
+          "legendFormat": "Подготовлено к скачиванию",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "noValue": "Нет данных",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 16,
+      "title": "Статус проверки документов",
+      "type": "bargauge",
+      "description": "Состояние документов из PostgreSQL; проверку выполняет отдельный контейнер worker.",
+      "gridPos": {
+        "x": 12,
+        "y": 32,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "legal_archive_documents{job=\"website\",status=\"pending\"}",
+          "legendFormat": "Ожидают проверки",
+          "range": false,
+          "instant": true
+        },
+        {
+          "refId": "B",
+          "expr": "legal_archive_documents{job=\"website\",status=\"ok\"}",
+          "legendFormat": "Проверены",
+          "range": false,
+          "instant": true
+        },
+        {
+          "refId": "C",
+          "expr": "legal_archive_documents{job=\"website\",status=\"error\"}",
+          "legendFormat": "Ошибка целостности",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "noValue": "Нет данных",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    }
+  ],
+  "annotations": {
+    "list": []
+  },
+  "links": [
+    {
+      "title": "Контейнеры",
+      "type": "link",
+      "url": "/d/legal-dms/containers",
+      "keepTime": true
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "source",
+        "label": "Источник",
+        "type": "custom",
+        "query": "Сайт : site,API : api",
+        "multi": true,
+        "includeAll": true,
+        "allValue": "site|api",
+        "current": {
+          "text": [
+            "Сайт"
+          ],
+          "value": [
+            "site"
+          ],
+          "selected": true
+        },
+        "options": [
+          {
+            "text": "All",
+            "value": "$__all",
+            "selected": false
+          },
+          {
+            "text": "Сайт",
+            "value": "site",
+            "selected": true
+          },
+          {
+            "text": "API",
+            "value": "api",
+            "selected": false
+          }
+        ]
+      }
+    ]
+  }
+}

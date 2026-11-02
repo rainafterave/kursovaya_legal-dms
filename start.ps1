@@ -21,3 +21,6 @@ if ($LASTEXITCODE -ne 0) { throw 'Docker Compose failed. Check Docker Desktop an
 docker compose ps
 $port = ((Get-Content -LiteralPath '.env' | Where-Object { $_ -match '^HTTP_PORT=' }) -replace '^HTTP_PORT=', '').Trim()
 Write-Host "Open http://localhost:$port"
+$grafanaPort = (([string](Get-Content -LiteralPath '.env' | Where-Object { $_ -match '^GRAFANA_PORT=' })) -replace '^GRAFANA_PORT=', '').Trim()
+if (-not $grafanaPort) { $grafanaPort = '3000' }
+Write-Host "Grafana http://localhost:$grafanaPort/d/legal-dms/containers"
